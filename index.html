@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f1a">
+<title>타로 상담</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f0f1a;--surface:#1a1a2e;--surface2:#252540;--accent:#7c6fff;--accent2:#ff6fa8;--text:#f0f0ff;--text2:#9090b0;--border:rgba(255,255,255,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh}
+main{max-width:480px;margin:0 auto;padding:28px 16px 48px}
+h1{font-size:24px;text-align:center}
+.sub{color:var(--text2);text-align:center;font-size:14px;margin:6px 0 20px}
+textarea{width:100%;height:90px;resize:none;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-size:15px;outline:none}
+textarea:focus{border-color:var(--accent)}
+.row{display:flex;gap:8px;margin-top:10px}
+.sp{flex:1;padding:10px 4px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font:inherit;font-size:13px;cursor:pointer;text-align:center}
+.sp.on{border-color:var(--accent);color:var(--text);background:var(--surface2)}
+label.rv{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:10px}
+#go{width:100%;margin-top:12px;padding:14px;border:0;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font:inherit;font-size:16px;cursor:pointer}
+#go:disabled{opacity:.5}
+#cards{display:grid;gap:8px;margin:22px auto 6px;perspective:900px}
+.slot{text-align:center;font-size:11px;color:var(--text2);line-height:1.3}
+.card{aspect-ratio:2/3;position:relative;transform-style:preserve-3d;transition:transform .8s;margin-bottom:5px}
+.card.flip{transform:rotateY(180deg)}
+.card>div{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px}
+.back{background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,var(--surface) 6px,var(--surface) 12px);font-size:24px}
+.face{background:var(--surface);transform:rotateY(180deg);border-color:var(--accent)}
+.art{text-align:center;font-size:24px;color:var(--accent2);line-height:1.1}
+.art small{display:block;font-size:.7em}
+.face.rev .art{transform:rotate(180deg)}
+.nm{font-size:12px;font-weight:600;text-align:center;word-break:keep-all}
+.dir{font-size:10px;color:var(--text2)}
+#cards.n10 .art{font-size:17px}#cards.n10 .nm{font-size:10px}#cards.n10 .dir{font-size:9px}
+#out{white-space:pre-wrap;line-height:1.8;font-size:15px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;display:none}
+#out.err{color:#ff8fa8}
+</style>
+</head>
+<body>
+<main>
+  <h1>🔮 타로 상담</h1>
+  <p class="sub">마음속 질문을 적고, 카드를 뽑아보세요.</p>
+  <textarea id="q" maxlength="200" placeholder="예) 이번 달에 이직 준비를 시작해도 될까요?"></textarea>
+  <div class="row" id="sps"></div>
+  <label class="rv"><input type="checkbox" id="rev" checked> 역방향 카드 포함</label>
+  <button id="go">카드 뽑기</button>
+  <div id="cards"></div>
+  <div id="out"></div>
+</main>
+<script>
+// 메이저 아르카나 22장 [표기, 한글, 영문, 기호]
+const MAJOR=["바보|The Fool","마법사|The Magician","여사제|The High Priestess","여황제|The Empress","황제|The Emperor","교황|The Hierophant","연인|The Lovers","전차|The Chariot","힘|Strength","은둔자|The Hermit","운명의 수레바퀴|Wheel of Fortune","정의|Justice","매달린 사람|The Hanged Man","죽음|Death","절제|Temperance","악마|The Devil","탑|The Tower","별|The Star","달|The Moon","태양|The Sun","심판|Judgement","세계|The World"]
+  .map((s,i)=>{const[k,e]=s.split("|");return[String(i),k,e,"✦"]});
+// 마이너 아르카나 56장 (4수트 × 14)
+const SUITS=[["완드","Wands","🔥"],["컵","Cups","💧"],["소드","Swords","⚔️"],["펜타클","Pentacles","🪙"]];
+const RANKS=[["에이스","Ace","A"],["2","Two","2"],["3","Three","3"],["4","Four","4"],["5","Five","5"],["6","Six","6"],["7","Seven","7"],["8","Eight","8"],["9","Nine","9"],["10","Ten","10"],["페이지","Page","P"],["나이트","Knight","N"],["퀸","Queen","Q"],["킹","King","K"]];
+const MINOR=SUITS.flatMap(s=>RANKS.map(r=>[r[2],`${s[0]} ${r[0]}`,`${r[1]} of ${s[1]}`,s[2]]));
+const DECK=[...MAJOR,...MINOR]; // 78장
+
+const SPREADS={
+  one:{name:"원카드",cols:1,pos:["오늘의 답"]},
+  three:{name:"쓰리카드",cols:3,pos:["현재 상황","걸림돌 · 핵심","조언 · 결과"]},
+  celtic:{name:"켈틱 크로스",cols:5,pos:["현재 상황","도전 과제","근본 원인","가까운 과거","의식 · 목표","가까운 미래","나의 태도","주변 환경","희망과 두려움","최종 결과"]}
+};
+let spread="three";
+const $=id=>document.getElementById(id);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+$("sps").innerHTML=Object.entries(SPREADS).map(([k,v])=>`<button class="sp ${k===spread?"on":""}" data-k="${k}">${v.name}<br>${v.pos.length}장</button>`).join("");
+$("sps").onclick=e=>{const b=e.target.closest(".sp");if(!b)return;spread=b.dataset.k;document.querySelectorAll(".sp").forEach(x=>x.classList.toggle("on",x===b))};
+
+$("go").onclick=async()=>{
+  const q=$("q").value.trim();
+  if(!q){$("q").focus();return}
+  $("go").disabled=true;
+  const out=$("out");out.style.display="none";out.className="";
+  const S=SPREADS[spread],n=S.pos.length,useRev=$("rev").checked;
+  const idx=[...DECK.keys()];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]]}
+  const picks=idx.slice(0,n).map(i=>({c:DECK[i],rev:useRev&&Math.random()<.4}));
+  const box=$("cards");
+  box.className=n>5?"n10":"";
+  box.style.gridTemplateColumns=`repeat(${S.cols},1fr)`;
+  box.style.maxWidth=n===1?"140px":"100%";
+  box.innerHTML=picks.map((p,k)=>{
+    const minor=p.c[3]!=="✦";
+    const art=minor?`${p.c[0]}<small>${p.c[3]}</small>`:p.c[0];
+    return `<div class="slot"><div class="card" id="c${k}"><div class="back">✦</div><div class="face ${p.rev?"rev":""}"><div class="art">${art}</div><div class="nm">${p.c[1]}</div><div class="dir">${p.rev?"역방향":"정방향"}</div></div></div>${S.pos[k]}</div>`}).join("");
+  for(let k=0;k<n;k++){await wait(n>3?350:700);$("c"+k).classList.add("flip")}
+  await wait(600);
+  out.style.display="block";out.textContent="카드를 읽고 있어요…";
+  try{
+    const r=await fetch("/api/tarot",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q,spread:S.name,cards:picks.map((p,k)=>({position:S.pos[k],name:p.c[1],en:p.c[2],reversed:p.rev}))})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"오류가 발생했어요.");
+    out.textContent=d.reading;
+  }catch(e){out.className="err";out.textContent=e.message}
+  $("go").disabled=false;
+};
+</script>
+</body>
+</html>
