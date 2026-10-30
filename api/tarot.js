@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     .join("\n");
   const prompt = `손님의 질문: """${question.trim().slice(0, 200)}"""\n\n스프레드: ${String(spread || "").slice(0, 20)}\n뽑힌 카드:\n${list}`;
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST",
@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 1, maxOutputTokens: cards.length > 3 ? 3000 : 1500, thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { temperature: 1, maxOutputTokens: cards.length > 3 ? 8000 : 4000 },
       }),
     });
     const data = await r.json();
