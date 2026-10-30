@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f1a">
+<title>타로 상담</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f0f1a;--surface:#1a1a2e;--surface2:#252540;--accent:#7c6fff;--accent2:#ff6fa8;--text:#f0f0ff;--text2:#9090b0;--border:rgba(255,255,255,.1)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh}
+main{max-width:480px;margin:0 auto;padding:28px 16px 48px}
+h1{font-size:24px;text-align:center}
+.sub{color:var(--text2);text-align:center;font-size:14px;margin:6px 0 20px}
+textarea{width:100%;height:90px;resize:none;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-size:15px;outline:none}
+textarea:focus{border-color:var(--accent)}
+.row{display:flex;gap:8px;margin-top:10px}
+.sp{flex:1;padding:10px 4px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font:inherit;font-size:13px;cursor:pointer;text-align:center}
+.sp.on{border-color:var(--accent);color:var(--text);background:var(--surface2)}
+label.rv{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:10px}
+#go{width:100%;margin-top:12px;padding:14px;border:0;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font:inherit;font-size:16px;cursor:pointer}
+#go:disabled{opacity:.5}
+#cards{display:grid;gap:8px;margin:22px auto 6px;perspective:900px}
+.slot{text-align:center;font-size:11px;color:var(--text2);line-height:1.3}
+.card{aspect-ratio:2/3;position:relative;transform-style:preserve-3d;transition:transform .8s;margin-bottom:5px}
+.card.flip{transform:rotateY(180deg)}
+.card>div{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px}
+.back{background:repeating-linear-gradient(45deg,var(--surface2),var(--surface2) 6px,var(--surface) 6px,var(--surface) 12px);font-size:24px}
+.face{background:var(--surface);transform:rotateY(180deg);border-color:var(--accent);justify-content:space-between;padding:6px 3px 5px}
+.art{flex:1;min-height:0;width:100%;display:flex}
+.art svg{width:100%;height:100%}
+.face.rev .art{transform:rotate(180deg)}
+.nm{font-size:12px;font-weight:600;text-align:center;word-break:keep-all}
+.dir{font-size:10px;color:var(--text2)}
+#cards.n10 .nm{font-size:10px}#cards.n10 .dir{font-size:9px}
+#out{white-space:pre-wrap;line-height:1.8;font-size:15px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;display:none}
+#out.err{color:#ff8fa8}
+</style>
+</head>
+<body>
+<main>
+  <h1>🔮 타로 상담</h1>
+  <p class="sub">마음속 질문을 적고, 카드를 뽑아보세요.</p>
+  <textarea id="q" maxlength="200" placeholder="예) 이번 달에 이직 준비를 시작해도 될까요?"></textarea>
+  <div class="row" id="sps"></div>
+  <label class="rv"><input type="checkbox" id="rev" checked> 역방향 카드 포함</label>
+  <button id="go">카드 뽑기</button>
+  <div id="cards"></div>
+  <div id="out"></div>
+</main>
+<script>
+// ===== 덱 데이터 (78장) =====
+const MAJOR=["바보|The Fool","마법사|The Magician","여사제|The High Priestess","여황제|The Empress","황제|The Emperor","교황|The Hierophant","연인|The Lovers","전차|The Chariot","힘|Strength","은둔자|The Hermit","운명의 수레바퀴|Wheel of Fortune","정의|Justice","매달린 사람|The Hanged Man","죽음|Death","절제|Temperance","악마|The Devil","탑|The Tower","별|The Star","달|The Moon","태양|The Sun","심판|Judgement","세계|The World"];
+const NUM=["0","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI"];
+const SUITS=[["완드","Wands"],["컵","Cups"],["소드","Swords"],["펜타클","Pentacles"]];
+const RANKS=[["에이스","Ace"],["2","Two"],["3","Three"],["4","Four"],["5","Five"],["6","Six"],["7","Seven"],["8","Eight"],["9","Nine"],["10","Ten"],["페이지","Page"],["나이트","Knight"],["퀸","Queen"],["킹","King"]];
+const DECK=[
+  ...MAJOR.map((s,i)=>{const[ko,en]=s.split("|");return{ko,en,m:1,i}}),
+  ...SUITS.flatMap((s,si)=>RANKS.map((r,ri)=>({ko:`${s[0]} ${r[0]}`,en:`${r[1]} of ${s[1]}`,s:si,r:ri})))
+];
+
+// ===== 일러스트 (SVG) =====
+const ICON=[
+'<circle cx="66" cy="22" r="9"/><path d="M8 74h52v20"/><circle cx="32" cy="42" r="8"/><path d="M32 50v24M32 58l-14 10M32 58l16 8"/>',
+'<path d="M50 26C58 14 78 14 78 26S58 38 50 26S42 14 22 26S42 38 50 26"/><path d="M50 40v52M40 92h20"/>',
+'<path d="M22 18v72M78 18v72M12 18h20M68 18h20M12 90h20M68 90h20"/><path d="M60 38A16 16 0 1 0 60 70A12 12 0 1 1 60 38Z"/>',
+'<circle cx="50" cy="36" r="18"/><path d="M50 54v36M36 74h28"/>',
+'<path d="M18 18h64v64H18z"/><path d="M30 44C20 26 44 22 50 40C56 22 80 26 70 44M50 40v30"/>',
+'<path d="M50 10v80M38 22h24M32 38h36M26 54h48"/>',
+'<path d="M50 88C12 62 22 28 50 50C78 28 88 62 50 88Z"/><circle cx="50" cy="22" r="6"/>',
+'<circle cx="34" cy="76" r="14"/><circle cx="68" cy="76" r="14"/><path d="M20 62h60V34H20zM26 34L50 16l24 18"/>',
+'<path d="M50 28C57 18 72 18 72 28S57 38 50 28S43 18 28 28S43 38 50 28"/><circle cx="50" cy="66" r="22"/><path d="M40 60h.1M60 60h.1M42 74q8 7 16 0"/>',
+'<path d="M68 14v78"/><path d="M34 34h28v32H34zM40 34v-8h16v8"/><path d="M48 44l3 6-3 6-3-6z"/>',
+'<circle cx="50" cy="50" r="36"/><circle cx="50" cy="50" r="8"/><path d="M50 14v28M50 58v28M14 50h28M58 50h28M25 25l17 17M58 58l17 17M75 25L58 42M42 58L25 75"/>',
+'<path d="M50 12v76M20 28h60M20 28l-10 26h20zM80 28l-10 26h20zM36 88h28"/>',
+'<path d="M14 14h72M50 14v18M50 32v30M50 40l-14 12M50 40l14 12"/><circle cx="50" cy="72" r="9"/>',
+'<path d="M28 92L66 16"/><path d="M66 16C88 20 90 44 84 52C82 38 76 28 66 26"/>',
+'<path d="M16 28h26l-4 26H20zM58 58h26l-4 26H62z"/><path d="M42 50C58 56 66 50 70 58" stroke-dasharray="3 4"/>',
+'<circle cx="50" cy="50" r="38"/><path d="M50 86L71 21L16 61H84L29 21Z"/>',
+'<path d="M34 90V38h30v52M28 38h42l-6-14H34z"/><path d="M84 8L66 38h14L62 66"/>',
+'<path d="M50 10v80M10 50h80M22 22l56 56M78 22L22 78"/><circle cx="50" cy="50" r="8"/>',
+'<path d="M64 14A36 36 0 1 0 64 86A28 28 0 1 1 64 14Z"/><path d="M78 30h.1M84 48h.1M78 66h.1"/>',
+'<circle cx="50" cy="50" r="17"/><path d="M50 8v14M50 78v14M8 50h14M78 50h14M20 20l10 10M70 70l10 10M80 20L70 30M30 70L20 80"/>',
+'<path d="M14 42H38L84 18V82L38 58H14Z"/><path d="M92 36v28"/>',
+'<ellipse cx="50" cy="50" rx="30" ry="40"/><path d="M50 34L62 50 50 66 38 50Z"/><path d="M14 14h.1M86 14h.1M14 86h.1M86 86h.1"/>'];
+const SY=[
+'<path d="M20 38V6M20 15c-8-2-10-8-8-12M20 15c8-2 10-8 8-12"/>',
+'<path d="M8 8h24c0 14-6 20-12 20S8 22 8 8zM20 28v8M12 36h16"/>',
+'<path d="M20 2v28M12 30h16M20 30v8"/>',
+'<circle cx="20" cy="20" r="16"/><path d="M20 10L25.9 28.1L10.5 16.9H29.5L14.1 28.1Z"/>'];
+const COL=["#ff9f43","#5ac8fa","#b8c4ff","#7ddc7d"];
+const PIPS=[[[50,66]],[[50,38],[50,94]],[[50,26],[50,64],[50,102]],[[30,40],[70,40],[30,92],[70,92]],[[30,40],[70,40],[50,66],[30,92],[70,92]],[[30,28],[70,28],[30,66],[70,66],[30,104],[70,104]],[[30,28],[70,28],[50,47],[30,66],[70,66],[30,104],[70,104]],[[30,28],[70,28],[50,47],[30,66],[70,66],[50,85],[30,104],[70,104]],[[30,22],[70,22],[30,50],[70,50],[30,78],[70,78],[30,106],[70,106],[50,64]],[[30,22],[70,22],[50,36],[30,50],[70,50],[30,78],[70,78],[50,92],[30,106],[70,106]]];
+const CROWN=['<circle cx="50" cy="26" r="9"/>','<path d="M38 38L50 12 62 38Z"/>','<path d="M34 38L36 16 44 26 50 12 56 26 64 16 66 38Z"/>','<path d="M30 38L32 14 41 26 50 10 59 26 68 14 70 38Z"/><path d="M30 44h40"/>'];
+const sym=(s,x,y,k)=>`<g transform="translate(${x-20*k} ${y-20*k}) scale(${k})">${SY[s]}</g>`;
+function art(c){
+  let b,col;
+  if(c.m){
+    col="#e8c872";
+    b=`<text x="50" y="13" text-anchor="middle" font-size="11" fill="${col}" stroke="none">${NUM[c.i]}</text><g transform="translate(5 20) scale(.9)">${ICON[c.i]}</g>`;
+  }else{
+    col=COL[c.s];
+    if(c.r<10){const k=c.r===0?1.8:c.r<6?.8:.55;b=PIPS[c.r].map(p=>sym(c.s,p[0],p[1],k)).join("")}
+    else b=CROWN[c.r-10]+sym(c.s,50,84,1.4);
+  }
+  return `<svg viewBox="0 0 100 120" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
+}
+
+const SPREADS={
+  one:{name:"원카드",cols:1,pos:["오늘의 답"]},
+  three:{name:"쓰리카드",cols:3,pos:["현재 상황","걸림돌 · 핵심","조언 · 결과"]},
+  celtic:{name:"켈틱 크로스",cols:5,pos:["현재 상황","도전 과제","근본 원인","가까운 과거","의식 · 목표","가까운 미래","나의 태도","주변 환경","희망과 두려움","최종 결과"]}
+};
+let spread="three";
+const $=id=>document.getElementById(id);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+$("sps").innerHTML=Object.entries(SPREADS).map(([k,v])=>`<button class="sp ${k===spread?"on":""}" data-k="${k}">${v.name}<br>${v.pos.length}장</button>`).join("");
+$("sps").onclick=e=>{const b=e.target.closest(".sp");if(!b)return;spread=b.dataset.k;document.querySelectorAll(".sp").forEach(x=>x.classList.toggle("on",x===b))};
+
+$("go").onclick=async()=>{
+  const q=$("q").value.trim();
+  if(!q){$("q").focus();return}
+  $("go").disabled=true;
+  const out=$("out");out.style.display="none";out.className="";
+  const S=SPREADS[spread],n=S.pos.length,useRev=$("rev").checked;
+  const idx=[...DECK.keys()];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]]}
+  const picks=idx.slice(0,n).map(i=>({c:DECK[i],rev:useRev&&Math.random()<.4}));
+  const box=$("cards");
+  box.className=n>5?"n10":"";
+  box.style.gridTemplateColumns=`repeat(${S.cols},1fr)`;
+  box.style.maxWidth=n===1?"140px":"100%";
+  box.innerHTML=picks.map((p,k)=>`<div class="slot"><div class="card" id="c${k}"><div class="back">✦</div><div class="face ${p.rev?"rev":""}"><div class="art">${art(p.c)}</div><div class="nm">${p.c.ko}</div><div class="dir">${p.rev?"역방향":"정방향"}</div></div></div>${S.pos[k]}</div>`).join("");
+  for(let k=0;k<n;k++){await wait(n>3?350:700);$("c"+k).classList.add("flip")}
+  await wait(600);
+  out.style.display="block";out.textContent="카드를 읽고 있어요…";
+  try{
+    const r=await fetch("/api/tarot",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q,spread:S.name,cards:picks.map((p,k)=>({position:S.pos[k],name:p.c.ko,en:p.c.en,reversed:p.rev}))})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"오류가 발생했어요.");
+    out.textContent=d.reading;
+  }catch(e){out.className="err";out.textContent=e.message}
+  $("go").disabled=false;
+};
+</script>
+</body>
+</html>
