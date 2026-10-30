@@ -35,11 +35,32 @@ label.rv{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text
 #cards.n10 .nm{font-size:10px}#cards.n10 .dir{font-size:9px}
 #out{white-space:pre-wrap;line-height:1.8;font-size:15px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px;display:none}
 #out.err{color:#ff8fa8}
+.top{position:relative}
+#manualBtn{position:absolute;right:0;top:0;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font:inherit;font-size:12px;cursor:pointer}
+#manualBtn:hover{border-color:var(--accent);color:var(--text)}
+#manual{position:fixed;inset:0;background:rgba(5,5,15,.75);display:none;align-items:flex-end;justify-content:center;z-index:50}
+#manual.open{display:flex}
+.sheet{width:100%;max-width:480px;max-height:88dvh;background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;display:flex;flex-direction:column}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
+.sheet header h2{font-size:17px}
+#mClose{background:none;border:0;color:var(--text2);font-size:22px;cursor:pointer;line-height:1}
+.mbody{overflow-y:auto;padding:6px 18px 28px;font-size:14px;line-height:1.75}
+.mbody h3{font-size:15px;color:var(--accent);margin:18px 0 6px}
+.mbody p,.mbody li{color:var(--text)}
+.mbody ol,.mbody ul{padding-left:20px}
+.mbody li{margin:3px 0}
+.mbody .tip{background:var(--surface2);border-left:3px solid var(--accent2);border-radius:8px;padding:10px 12px;margin-top:8px;color:var(--text2);font-size:13px}
+.mbody table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+.mbody th,.mbody td{border:1px solid var(--border);padding:7px 8px;text-align:left;vertical-align:top}
+.mbody th{background:var(--surface2);color:var(--text2);font-weight:600}
 </style>
 </head>
 <body>
 <main>
-  <h1>🔮 타로 상담</h1>
+  <div class="top">
+    <h1>🔮 타로 상담</h1>
+    <button id="manualBtn" type="button" aria-haspopup="dialog">📖 설명서</button>
+  </div>
   <p class="sub">마음속 질문을 적고, 카드를 뽑아보세요.</p>
   <textarea id="q" maxlength="200" placeholder="예) 이번 달에 이직 준비를 시작해도 될까요?"></textarea>
   <div class="row" id="sps"></div>
@@ -48,6 +69,65 @@ label.rv{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text
   <div id="cards"></div>
   <div id="out"></div>
 </main>
+<div id="manual" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="sheet">
+    <header><h2 id="mTitle">📖 타로 상담 사용 설명서</h2><button id="mClose" type="button" aria-label="닫기">✕</button></header>
+    <div class="mbody">
+      <h3>1. 이런 앱이에요</h3>
+      <p>고민을 적고 타로 카드를 직접 뽑으면, 뽑힌 카드와 각 카드의 위치(의미)를 바탕으로 AI가 질문에 맞춰 해석해 주는 타로 상담 앱입니다. 78장의 정식 타로 덱(메이저 아르카나 22장 + 마이너 아르카나 56장)을 사용합니다.</p>
+
+      <h3>2. 사용 방법</h3>
+      <ol>
+        <li><b>질문 입력</b> – 마음속 고민을 200자 이내로 적어요.</li>
+        <li><b>스프레드 선택</b> – 원카드 / 쓰리카드 / 켈틱 크로스 중 하나를 골라요.</li>
+        <li><b>역방향 설정</b> – 거꾸로 나오는 카드를 포함할지 체크해요.</li>
+        <li><b>카드 뽑기</b> 버튼을 누르면 카드가 섞이고 한 장씩 뒤집혀요.</li>
+        <li>모든 카드가 공개되면 잠시 후 아래에 <b>해석 결과</b>가 나타나요.</li>
+      </ol>
+      <div class="tip">다시 보고 싶다면 질문을 수정하거나 그대로 <b>카드 뽑기</b>를 다시 누르세요. 매번 새로 섞여 다른 카드가 나옵니다.</div>
+
+      <h3>3. 스프레드 종류</h3>
+      <table>
+        <tr><th>스프레드</th><th>장수</th><th>추천 상황</th></tr>
+        <tr><td>원카드</td><td>1장</td><td>오늘의 운세, 예/아니오에 가까운 간단한 질문</td></tr>
+        <tr><td>쓰리카드</td><td>3장</td><td>현재 → 걸림돌 → 조언·결과 흐름이 궁금할 때 (가장 무난)</td></tr>
+        <tr><td>켈틱 크로스</td><td>10장</td><td>큰 결정, 복잡한 고민을 깊이 있게 볼 때</td></tr>
+      </table>
+
+      <h3>4. 카드 위치의 의미</h3>
+      <p><b>쓰리카드</b>: ① 현재 상황 · ② 걸림돌·핵심 · ③ 조언·결과</p>
+      <p style="margin-top:6px"><b>켈틱 크로스</b></p>
+      <ol>
+        <li>현재 상황</li>
+        <li>도전 과제</li>
+        <li>근본 원인</li>
+        <li>가까운 과거</li>
+        <li>의식·목표</li>
+        <li>가까운 미래</li>
+        <li>나의 태도</li>
+        <li>주변 환경</li>
+        <li>희망과 두려움</li>
+        <li>최종 결과</li>
+      </ol>
+
+      <h3>5. 정방향과 역방향</h3>
+      <p>카드가 바로 서 있으면 <b>정방향</b>, 거꾸로 서 있으면 <b>역방향</b>입니다. 역방향은 보통 의미가 약해지거나, 막혀 있거나, 내면으로 향하는 상태를 뜻해요. 역방향 포함을 끄면 모든 카드가 정방향으로만 나옵니다. (포함 시 약 40% 확률로 역방향)</p>
+
+      <h3>6. 질문 잘 쓰는 팁</h3>
+      <ul>
+        <li>구체적으로: “사랑운 알려줘”보다 “지금 만나는 사람과 관계를 이어가도 될까요?”</li>
+        <li>열린 질문이 좋아요: “어떻게 하면 ~할 수 있을까요?”, “~에서 제가 놓치고 있는 건?”</li>
+        <li>한 번에 하나의 주제만 물어보세요.</li>
+        <li>같은 질문을 마음에 안 든다고 계속 다시 뽑기보다는, 처음 나온 결과를 곰곰이 생각해 보세요.</li>
+      </ul>
+
+      <h3>7. 자주 묻는 질문</h3>
+      <p><b>Q. 해석이 나오지 않고 오류가 떠요.</b><br>인터넷 연결을 확인하고 잠시 뒤 다시 시도해 주세요. 카드는 그대로 보이지만 해석은 서버와 통신해야 생성돼요.</p>
+      <p style="margin-top:8px"><b>Q. 카드가 진짜 랜덤인가요?</b><br>네, 뽑을 때마다 78장을 새로 섞어서 중복 없이 뽑습니다.</p>
+      <p style="margin-top:8px"><b>Q. 결과를 그대로 믿어도 되나요?</b><br>타로는 생각을 정리하고 다른 관점을 얻는 참고 도구예요. 건강·법률·재정 등 중요한 결정은 반드시 전문가와 상의하세요.</p>
+    </div>
+  </div>
+</div>
 <script>
 // ===== 덱 데이터 (78장) =====
 const MAJOR=["바보|The Fool","마법사|The Magician","여사제|The High Priestess","여황제|The Empress","황제|The Emperor","교황|The Hierophant","연인|The Lovers","전차|The Chariot","힘|Strength","은둔자|The Hermit","운명의 수레바퀴|Wheel of Fortune","정의|Justice","매달린 사람|The Hanged Man","죽음|Death","절제|Temperance","악마|The Devil","탑|The Tower","별|The Star","달|The Moon","태양|The Sun","심판|Judgement","세계|The World"];
@@ -142,6 +222,15 @@ $("go").onclick=async()=>{
   }catch(e){out.className="err";out.textContent=e.message}
   $("go").disabled=false;
 };
+
+// ===== 설명서 팝업 =====
+const mn=$("manual");
+const openManual=()=>{mn.classList.add("open");mn.querySelector(".mbody").scrollTop=0;document.body.style.overflow="hidden"};
+const closeManual=()=>{mn.classList.remove("open");document.body.style.overflow=""};
+$("manualBtn").onclick=openManual;
+$("mClose").onclick=closeManual;
+mn.onclick=e=>{if(e.target===mn)closeManual()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&mn.classList.contains("open"))closeManual()});
 </script>
 </body>
 </html>
